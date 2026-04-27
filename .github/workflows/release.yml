@@ -1,0 +1,71 @@
+name: 'AVD Resilience Platform CD'
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/**'
+      - 'backend/**'
+      - '.github/workflows/release.yml'
+
+jobs:
+  security-validation:
+    name: 'Security & Policy Scan'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    - name: Run Snyk Container Scan
+      uses: snyk/actions/docker@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        image: acrresilience.azurecr.io/devopstrio/dr-api:latest
+
+  build-and-push:
+    name: 'Build DR Containers'
+    needs: security-validation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    - name: ACR Authentication
+      run: az acr login --name acrresilience
+
+    - name: Build & Push DR Gateway
+      run: |
+        docker build -t acrresilience.azurecr.io/devopstrio/dr-api:${{ github.sha }} ./backend
+        docker push acrresilience.azurecr.io/devopstrio/dr-api:${{ github.sha }}
+
+  infra-orchestration:
+    name: 'Terraform Global Deploy'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: ./terraform
+
+    - name: Terraform Plan
+      run: terraform plan -out=drplan
+      working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZ_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZ_TENANT_ID }}
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve drplan
+      working-directory: ./terraform
+      env:
+        ARM_CLIENT_ID: ${{ secrets.AZ_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.AZ_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZ_TENANT_ID }}

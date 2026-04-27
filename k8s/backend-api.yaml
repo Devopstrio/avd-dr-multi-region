@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dr-orchestrator-api
+  namespace: avd-resilience-prod
+  labels:
+    component: dr-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: dr-api
+  template:
+    metadata:
+      labels:
+        component: dr-api
+    spec:
+      containers:
+      - name: gateway
+        image: acrresilience.azurecr.io/devopstrio/dr-api:v1.2.0
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: dr-secrets
+              key: db-url
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dr-api-svc
+  namespace: avd-resilience-prod
+spec:
+  selector:
+    component: dr-api
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-sync-engine
+  namespace: avd-resilience-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: profile-engine
+  template:
+    metadata:
+      labels:
+        component: profile-engine
+    spec:
+      containers:
+      - name: sync-worker
+        image: acrresilience.azurecr.io/devopstrio/profile-engine:latest
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dr-api-hpa
+  namespace: avd-resilience-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dr-orchestrator-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
