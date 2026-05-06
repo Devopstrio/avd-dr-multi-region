@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 <img src="https://raw.githubusercontent.com/Devopstrio/.github/main/assets/Browser_logo.png" height="90" alt="Devopstrio Logo" />
 
@@ -33,26 +33,26 @@ By integrating **real-time profile replication**, **host pool configuration sync
 
 ### 1. High-Level Multi-Region Architecture
 ```mermaid
-graph TD
-    User[Global Workforce] --> Traffic[Azure Front Door / Traffic Manager]
-    Traffic -->|Primary| Region1[UK South - Active]
-    Traffic -->|Secondary| Region2[North Europe - Standby]
+flowchart TD
+    User["Global Workforce"] --> Traffic["Azure Front Door / Traffic Manager"]
+    Traffic["Azure Front Door / Traffic Manager"] -->|Primary| Region1["UK South - Active"]
+    Traffic["Azure Front Door / Traffic Manager"] -->|Secondary| Region2["North Europe - Standby"]
     
-    subgraph "Control Plane"
-        Portal[DR Dashboard]
-        API[FastAPI Gateway]
-        Engine[DR Orchestration Engine]
+    subgraph ControlPlane["Control Plane"]
+        Portal["DR Dashboard"]
+        API["FastAPI Gateway"]
+        Engine["DR Orchestration Engine"]
     end
     
-    subgraph "Replication Pipeline"
-        Profile[FSLogix Cloud Cache]
-        Image[Compute Gallery Sync]
-        Config[Terraform/Bicep Sync]
+    subgraph ReplicationPipeline["Replication Pipeline"]
+        Profile["FSLogix Cloud Cache"]
+        Image["Compute Gallery Sync"]
+        Config["Terraform/Bicep Sync"]
     end
     
     Engine --> API
     API --> Traffic
-    Engine --> Pipeline
+    Engine --> ReplicationPipeline
 ```
 
 ### 2. Region Failover Workflow
@@ -74,158 +74,158 @@ sequenceDiagram
 
 ### 3. Failback Lifecycle
 ```mermaid
-graph TD
-    Stable[Verify Primary Region Stability] --> Sync[Final Multi-Master Profile Sync]
-    Sync --> Drain[Drain Secondary Session Hosts]
-    Drain --> Cutover[Redirect Traffic to Primary]
-    Cutover --> Deallocate[Scale Down Secondary Capacity]
+flowchart TD
+    Stable["Verify Primary Region Stability"] --> Sync["Final Multi-Master Profile Sync"]
+    Sync["Final Multi-Master Profile Sync"] --> Drain["Drain Secondary Session Hosts"]
+    Drain["Drain Secondary Session Hosts"] --> Cutover["Redirect Traffic to Primary"]
+    Cutover["Redirect Traffic to Primary"] --> Deallocate["Scale Down Secondary Capacity"]
 ```
 
 ### 4. Profile Replication Flow (FSLogix)
 ```mermaid
-graph LR
-    User[User Session] --> App[Write to VHDX]
-    App --> CC[Cloud Cache Logic]
-    CC -->|Sync| Share1[Azure Files - Primary]
-    CC -->|Asynchronous| Share2[Azure Files - Secondary]
-    Share1 --> Audit[Profile Health Check]
+flowchart LR
+    User["User Session"] --> App["Write to VHDX"]
+    App["Write to VHDX"] --> CC["Cloud Cache Logic"]
+    CC["Cloud Cache Logic"] -->|Sync| Share1["Azure Files - Primary"]
+    CC["Cloud Cache Logic"] -->|Asynchronous| Share2["Azure Files - Secondary"]
+    Share1["Azure Files - Primary"] --> Audit["Profile Health Check"]
 ```
 
 ### 5. Capacity Reserve Model
 ```mermaid
-graph TD
-    Plan[Max Concurrency Plan] --> Reserved[Reserved Instances]
-    Reserved --> Spot[Spot Burst (Optional)]
-    Plan --> Cold[Cold Standby (0 Nodes)]
-    Plan --> Warm[Warm Standby (10% Nodes)]
+flowchart TD
+    Plan["Max Concurrency Plan"] --> Reserved["Reserved Instances"]
+    Reserved["Reserved Instances"] --> Spot["Spot Burst (Optional)"]
+    Plan["Max Concurrency Plan"] --> Cold["Cold Standby (0 Nodes)"]
+    Plan["Max Concurrency Plan"] --> Warm["Warm Standby (10% Nodes)"]
 ```
 
 ### 6. Security Trust Boundary
 ```mermaid
-graph TD
-    Internet[Public Internet] --> WAF[Azure WAF]
-    WAF --> AGW[Application Gateway]
-    AGW --> Identity[Entra ID / MFA]
-    Identity --> Workspace[AVD Feed]
+flowchart TD
+    Internet["Public Internet"] --> WAF["Azure WAF"]
+    WAF["Azure WAF"] --> AGW["Application Gateway"]
+    AGW["Application Gateway"] --> Identity["Entra ID / MFA"]
+    Identity["Entra ID / MFA"] --> Workspace["AVD Feed"]
 ```
 
 ### 7. AVD Global Topology
 ```mermaid
-graph LR
-    Hub[Global Gateway] --> RegionA[EMEA]
-    Hub --> RegionB[AMER]
-    Hub --> RegionC[APAC]
-    RegionA --> Cluster[Active-Active Host Pools]
+flowchart LR
+    Hub["Global Gateway"] --> RegionA["EMEA"]
+    Hub["Global Gateway"] --> RegionB["AMER"]
+    Hub["Global Gateway"] --> RegionC["APAC"]
+    RegionA["EMEA"] --> Cluster["Active-Active Host Pools"]
 ```
 
 ### 8. API Request Lifecycle
 ```mermaid
-graph LR
-    Req[POST /failover/start] --> JW[Verify Token]
-    JW --> Log[Audit Trace]
-    Log --> Worker[Background Failover Worker]
-    Worker --> Azure[ARM SDK Invocation]
+flowchart LR
+    Req["POST /failover/start"] --> JW["Verify Token"]
+    JW["Verify Token"] --> Log["Audit Trace"]
+    Log["Audit Trace"] --> Worker["Background Failover Worker"]
+    Worker["Background Failover Worker"] --> Azure["ARM SDK Invocation"]
 ```
 
 ### 9. Multi-Tenant Tenancy Model
 ```mermaid
-graph TD
-    Root[Global Admin]
-    Root --> Tenant1[Finance BU]
-    Root --> Tenant2[Retail BU]
-    Tenant1 --> DR1[Dedicated DR Plan]
-    Tenant2 --> DR2[Shared DR Plan]
+flowchart TD
+    Root["Global Admin"]
+    Root["Global Admin"] --> Tenant1["Finance BU"]
+    Root["Global Admin"] --> Tenant2["Retail BU"]
+    Tenant1["Finance BU"] --> DR1["Dedicated DR Plan"]
+    Tenant2["Retail BU"] --> DR2["Shared DR Plan"]
 ```
 
 ### 10. Monitoring & Telemetry Flow
 ```mermaid
-graph LR
-    Log[Diagnostics] --> LAW[Log Analytics]
-    LAW --> KQL[Analytics Engine]
-    KQL --> Grafana[Resilience Scorecard]
+flowchart LR
+    Log["Diagnostics"] --> LAW["Log Analytics"]
+    LAW["Log Analytics"] --> KQL["Analytics Engine"]
+    KQL["Analytics Engine"] --> Grafana["Resilience Scorecard"]
 ```
 
 ### 11. Disaster Recovery Topology
 ```mermaid
-graph TD
-    Active[Active Region]
-    Standby[Standby Region]
-    Active -- Profile Sync --> Standby
-    Active -- Image Sync --> Standby
-    Active -- Resource Config Sync --> Standby
+flowchart TD
+    Active["Active Region"]
+    Standby["Standby Region"]
+    Active["Active Region"] -- Profile Sync --> Standby["Standby Region"]
+    Active["Active Region"] -- Image Sync --> Standby["Standby Region"]
+    Active["Active Region"] -- Resource Config Sync --> Standby["Standby Region"]
 ```
 
 ### 12. DNS Cutover Workflow
 ```mermaid
-graph LR
-    Trigger[Health Probe Fails] --> Update[Update Traffic Manager Endpoint]
-    Update --> TTL[Wait for TTL Expiry]
-    TTL --> Active[Secondary Now Live]
+flowchart LR
+    Trigger["Health Probe Fails"] --> Update["Update Traffic Manager Endpoint"]
+    Update["Update Traffic Manager Endpoint"] --> TTL["Wait for TTL Expiry"]
+    TTL["Wait for TTL Expiry"] --> Active["Secondary Now Live"]
 ```
 
 ### 13. Identity Federation Model
 ```mermaid
-graph LR
-    Local[AD Domain Controller] --> Entra[Entra ID Connect]
-    Entra --> Cloud[Global AVD Identity]
+flowchart LR
+    Local["AD Domain Controller"] --> Entra["Entra ID Connect"]
+    Entra["Entra ID Connect"] --> Cloud["Global AVD Identity"]
 ```
 
 ### 14. DR Test Lifecycle (Dry Run)
 ```mermaid
-graph TD
-    Schedule[Monthly Schedule] --> TestPool[Isolated Test Host Pool]
-    TestPool --> UserTest[Synthetic Login Test]
-    UserTest --> Verify[Verify App Availability]
-    Verify --> Report[Pass/Fail Report]
+flowchart TD
+    Schedule["Monthly Schedule"] --> TestPool["Isolated Test Host Pool"]
+    TestPool["Isolated Test Host Pool"] --> UserTest["Synthetic Login Test"]
+    UserTest["Synthetic Login Test"] --> Verify["Verify App Availability"]
+    Verify["Verify App Availability"] --> Report["Pass/Fail Report"]
 ```
 
 ### 15. CI/CD Operations Pipeline
 ```mermaid
-graph LR
-    Config[DR Rule Change] --> Validate[Lint & Security Scan]
-    Validate --> Lab[Deploy to Lab Region]
-    Lab --> Cert[Verify Consistency]
-    Cert --> Prod[Global Sync]
+flowchart LR
+    Config["DR Rule Change"] --> Validate["Lint & Security Scan"]
+    Validate["Lint & Security Scan"] --> Lab["Deploy to Lab Region"]
+    Lab["Deploy to Lab Region"] --> Cert["Verify Consistency"]
+    Cert["Verify Consistency"] --> Prod["Global Sync"]
 ```
 
 ### 16. Executive Governance Workflow
 ```mermaid
-graph TD
-    Dashboard[Real-time Scorecard] --> Review[Quarterly BCDR Review]
-    Review --> Policy[Update Availability Guardrails]
+flowchart TD
+    Dashboard["Real-time Scorecard"] --> Review["Quarterly BCDR Review"]
+    Review["Quarterly BCDR Review"] --> Policy["Update Availability Guardrails"]
 ```
 
 ### 17. Contractor Emergency Access Model
 ```mermaid
-graph TD
-    Request[Burst Workload] --> Access[Entra Conditional Access]
-    Access --> Isolated[Emergency DR Pool]
-    Isolated --> Apps[Restricted App Set]
+flowchart TD
+    Request["Burst Workload"] --> Access["Entra Conditional Access"]
+    Access["Entra Conditional Access"] --> Isolated["Emergency DR Pool"]
+    Isolated["Emergency DR Pool"] --> Apps["Restricted App Set"]
 ```
 
 ### 18. Storage Replication Workflow
 ```mermaid
-graph LR
-    Source[Premium Files] --> GRS[Geo-Redundant Replication]
-    GRS --> Target[Read-Access Target]
-    Target --> Status[Sync Lag Monitor]
+flowchart LR
+    Source["Premium Files"] --> GRS["Geo-Redundant Replication"]
+    GRS["Geo-Redundant Replication"] --> Target["Read-Access Target"]
+    Target["Read-Access Target"] --> Status["Sync Lag Monitor"]
 ```
 
 ### 19. Global Region Topology
 ```mermaid
-graph TD
-    HQ[London]
-    HQ --> UKS[UK South]
-    HQ --> UKW[UK West]
-    HQ --> USE[US East]
-    UKS <--> UKW[Failover Pair]
+flowchart TD
+    HQ["London"]
+    HQ["London"] --> UKS["UK South"]
+    HQ["London"] --> UKW["UK West"]
+    HQ["London"] --> USE["US East"]
+    UKS["UK South"] <--> UKW["Failover Pair"]
 ```
 
 ### 20. Resilience Score Workflow
 ```mermaid
-graph LR
-    Audit[Host Pool Audit] --> Score[Calculate Availability %]
-    Score --> Recommendation[Corrective Action Advice]
+flowchart LR
+    Audit["Host Pool Audit"] --> Score["Calculate Availability %"]
+    Score["Calculate Availability %"] --> Recommendation["Corrective Action Advice"]
 ```
 
 ---
